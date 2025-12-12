@@ -6,7 +6,7 @@ import copy
 from singer_sdk.streams import RESTStream
 from singer_sdk.exceptions import RetriableAPIError, FatalAPIError
 from cached_property import cached_property
-from tap_r_lightspeed.auth import LightspeedOAuthAuthenticator
+from tap_lightspeed_rseries.auth import LightspeedOAuthAuthenticator
 import singer
 from singer import StateMessage
 

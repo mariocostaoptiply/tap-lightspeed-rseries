@@ -4,7 +4,7 @@ from typing import Optional, Any, Dict
 import requests
 import json
 from singer_sdk import typing as th
-from tap_r_lightspeed.client import LightspeedRSeriesStream
+from tap_lightspeed_rseries.client import LightspeedRSeriesStream
 
 
 class AccountStream(LightspeedRSeriesStream):

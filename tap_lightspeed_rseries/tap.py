@@ -5,7 +5,7 @@ from typing import List
 from singer_sdk import Stream, Tap
 from singer_sdk import typing as th
 
-from tap_r_lightspeed.streams import (
+from tap_lightspeed_rseries.streams import (
     AccountStream,
     ItemStream,
     VendorStream,
@@ -38,7 +38,7 @@ class TapRLightspeed(Tap):
         self.config_file = config[0] if config else None
         super().__init__(config, catalog, state, parse_env_config, validate_config)
 
-    name = "tap-lightspeed"
+    name = "tap-lightspeed-rseries"
 
     config_jsonschema = th.PropertiesList(
         th.Property(

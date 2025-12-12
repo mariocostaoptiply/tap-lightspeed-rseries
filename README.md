@@ -1,6 +1,6 @@
-# tap-lightspeed
+# tap-lightspeed-rseries
 
-`tap-r-lightspeed` is a Singer tap for Lightspeed R-Series that produces JSON-formatted 
+`tap-lightspeed-rseries` is a Singer tap for Lightspeed R-Series that produces JSON-formatted 
 data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md) 
 
 ## Configuration
@@ -11,7 +11,7 @@ A full list of supported settings and capabilities for this
 tap is available by running:
 
 ```bash
-tap-r-lightspeed --about
+tap-lightspeed-rseries --about
 ```
 
 ### Configure using environment variables
@@ -39,14 +39,14 @@ Sample config:
 
 ## Usage
 
-You can easily run `tap-r-lightspeed` by itself or in a pipeline.
+You can easily run `tap-lightspeed-rseries` by itself or in a pipeline.
 
 ### Executing the Tap Directly
 
 ```bash
-tap-r-lightspeed --version
-tap-r-lightspeed --help
-tap-r-lightspeed --config CONFIG --discover > ./catalog.json
+tap-lightspeed-rseries --version
+tap-lightspeed-rseries --help
+tap-lightspeed-rseries --config CONFIG --discover > ./catalog.json
 ```
 
 ### Initialize your Development Environment
