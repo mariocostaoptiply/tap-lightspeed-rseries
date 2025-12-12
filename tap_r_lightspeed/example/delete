@@ -1,0 +1,25 @@
+{
+    "access_token": "lsxs_at_ca8eL20GqIceOGevlhYcgQhCoVcOZr71",
+    "domain_prefix": "mariooptiply",
+    "expires": 1764259374,
+    "expires_in": 259199,
+    "refresh_token": "lsxs_rt_xhnIC1ezsT2oWJL3zQRqikVniSuezKI3",
+    "scope": "audit:read billing:partner_subscription:read billing:partner_subscription:write business_rules:read business_rules:write channels:read consignments:read consignments:write:inventory_count consignments:write:stock_order consignments:write:stock_transfer customers:read customers:write custom_fields:read custom_fields:write fulfillments:read fulfillments:write gift_cards:read gift_cards:write:issue gift_cards:write:redeem inventory:read outlets:read payments:read payment_types:read products:read products:read:price_books products:write products:write:price_books promotions:read promotions:write register:close register:open registers:read remote_rules:read remote_rules:write retailer:read sales:read sales:write serial_numbers:read serial_numbers:write services:read services:write store_credits:read store_credits:write:issue suppliers:read suppliers:write taxes:read taxes:write users:read users:write webhooks",
+    "token_type": "Bearer",
+    "deleted": true
+}
+
+# Lightspeed R-Series API Configuration
+# Required fields
+DOMAIN_PREFIX=mariooptiply
+CLIENT_ID=your_client_id_here
+CLIENT_SECRET=your_client_secret_here
+REFRESH_TOKEN=lsxs_rt_xhnIC1ezsT2oWJL3zQRqikVniSuezKI3
+
+# Optional fields
+ACCESS_TOKEN=lsxs_at_ca8eL20GqIceOGevlhYcgQhCoVcOZr71
+START_DATE=2024-01-01T00:00:00Z
+THROTTLE_SECONDS=1.0
+
+# Optional parameters for products stream
+PRODUCTS_DELETED=true
