@@ -42,6 +42,32 @@ class AccountStream(LightspeedRSeriesStream):
             self.logger.warning("Account object not found in response")
 
     def get_child_context(self, record: dict, context: Optional[dict]) -> dict:
+        
+        accounts_ids = self.config.get("account_ids")
+        if accounts_ids:
+            # Handle comma-separated account IDs
+            if isinstance(accounts_ids, str):
+                accounts_ids = [id.strip() for id in accounts_ids.split(",") if id.strip()]
+            elif isinstance(accounts_ids, (int, float)):
+                accounts_ids = [str(accounts_ids)]
+            elif isinstance(accounts_ids, list):
+                accounts_ids = [str(id).strip() for id in accounts_ids if id]
+            
+            # Normalize AccountID from record to string for comparison
+            record_account_id = str(record.get("accountID"), ""))
+            
+            # Skip this account if it's not in the allowed list
+            if record_account_id not in accounts_ids:
+                self.logger.info(
+                    f"Skipping account '{record.get('name', 'Unknown')}' "
+                    f"({record_account_id}) - not in account_ids filter [{', '.join(accounts_ids)}]"
+                )
+                return None
+            else:
+                self.logger.info(
+                    f"Processing account '{record.get('name', 'Unknown')}' "
+                    f"({record_account_id}) - matches account_ids filter"
+                )
         return {
             "accountID": record.get("accountID"),
             "account_name": record.get("name"),

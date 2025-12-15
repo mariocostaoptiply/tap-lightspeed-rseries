@@ -67,10 +67,17 @@ class TapRLightspeed(Tap):
             required=False,
         ),
         th.Property(
-            "expires",
+            "account_ids",
+            th.StringType,
+            required=False,
+            description="Optional company ID(s) to sync. Can be a single company ID string or comma-separated company IDs. If not provided, all companies will be synced.",
+        ),
+        th.Property(
+            "shop_ids",
             th.IntegerType,
             required=False,
-        ),
+            description="Required shop ID to export data to.",
+        )
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:
