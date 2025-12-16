@@ -54,7 +54,7 @@ class AccountStream(LightspeedRSeriesStream):
                 accounts_ids = [str(id).strip() for id in accounts_ids if id]
             
             # Normalize AccountID from record to string for comparison
-            record_account_id = str(record.get("accountID"), ""))
+            record_account_id = str(record.get("accountID", ""))
             
             # Skip this account if it's not in the allowed list
             if record_account_id not in accounts_ids:
