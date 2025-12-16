@@ -9,7 +9,7 @@ keywords = [
     "R-Series",
 ]
 license = "Apache 2.0"
-packages = [{include = "tap_lightspeed_rseries", from = "."}]
+packages = [{include = "tap_lightspeed_rseries"}]
 
 [tool.poetry.dependencies]
 python = "<3.11,>=3.7.1"
@@ -38,4 +38,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 # CLI declaration
-tap-lightspeed-rseries = "tap_lightspeed_rseries.tap:TapRLightspeed.cli"
+tap-lightspeed-r-series = "tap_lightspeed_rseries.tap:TapRLightspeed.cli"
