@@ -346,76 +346,7 @@ class VendorStream(LightspeedRSeriesStream):
                 th.Property("rate", th.StringType),
             ),
         ),
-        th.Property(
-            "Contact",
-            th.ObjectType(
-                th.Property("contactID", th.StringType),
-                th.Property("custom", th.StringType),
-                th.Property("noEmail", th.StringType),
-                th.Property("noPhone", th.StringType),
-                th.Property("noMail", th.StringType),
-                th.Property(
-                    "Addresses",
-                    th.ObjectType(
-                        th.Property(
-                            "ContactAddress",
-                            th.ObjectType(
-                                th.Property("address1", th.StringType),
-                                th.Property("address2", th.StringType),
-                                th.Property("city", th.StringType),
-                                th.Property("state", th.StringType),
-                                th.Property("zip", th.StringType),
-                                th.Property("country", th.StringType),
-                                th.Property("countryCode", th.StringType),
-                                th.Property("stateCode", th.StringType),
-                            ),
-                        ),
-                    ),
-                ),
-                th.Property(
-                    "Phones",
-                    th.ObjectType(
-                        th.Property(
-                            "ContactPhone",
-                            th.ArrayType(
-                                th.ObjectType(
-                                    th.Property("number", th.StringType),
-                                    th.Property("useType", th.StringType),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-                th.Property(
-                    "Emails",
-                    th.ObjectType(
-                        th.Property(
-                            "ContactEmail",
-                            th.ArrayType(
-                                th.ObjectType(
-                                    th.Property("address", th.StringType),
-                                    th.Property("useType", th.StringType),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-                th.Property(
-                    "Websites",
-                    th.ObjectType(
-                        th.Property(
-                            "ContactWebsite",
-                            th.ArrayType(
-                                th.ObjectType(
-                                    th.Property("url", th.StringType),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-                th.Property("timeStamp", th.DateTimeType),
-            ),
-        ),
+        th.Property("Contact", th.StringType),  # Stored as JSON string for robustness
         th.Property(
             "Reps",
             th.ObjectType(
@@ -442,37 +373,12 @@ class VendorStream(LightspeedRSeriesStream):
             row["accountID"] = context.get("accountID")
             row["account_name"] = context.get("account_name")
         
-        # Normalize Contact.Phones.ContactPhone: convert single object to array
-        if "Contact" in row and row["Contact"]:
-            contact = row["Contact"]
-            if "Phones" in contact and contact["Phones"]:
-                phones = contact["Phones"]
-                if "ContactPhone" in phones:
-                    contact_phone = phones["ContactPhone"]
-                    if isinstance(contact_phone, dict):
-                        phones["ContactPhone"] = [contact_phone]
-                    elif not isinstance(contact_phone, list):
-                        phones["ContactPhone"] = []
-            
-            # Normalize Contact.Emails.ContactEmail: convert single object to array
-            if "Emails" in contact and contact["Emails"]:
-                emails = contact["Emails"]
-                if "ContactEmail" in emails:
-                    contact_email = emails["ContactEmail"]
-                    if isinstance(contact_email, dict):
-                        emails["ContactEmail"] = [contact_email]
-                    elif not isinstance(contact_email, list):
-                        emails["ContactEmail"] = []
-            
-            # Normalize Contact.Websites.ContactWebsite: convert single object to array
-            if "Websites" in contact and contact["Websites"]:
-                websites = contact["Websites"]
-                if "ContactWebsite" in websites:
-                    contact_website = websites["ContactWebsite"]
-                    if isinstance(contact_website, dict):
-                        websites["ContactWebsite"] = [contact_website]
-                    elif not isinstance(contact_website, list):
-                        websites["ContactWebsite"] = []
+        # Convert Contact to JSON string for simplicity and robustness
+        if "Contact" in row:
+            if row["Contact"] and row["Contact"] != "":
+                row["Contact"] = json.dumps(row["Contact"])
+            else:
+                row["Contact"] = None
         
         return row
 
