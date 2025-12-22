@@ -20,17 +20,7 @@ class AccountStream(LightspeedRSeriesStream):
     schema = th.PropertiesList(
         th.Property("accountID", th.StringType, required=True),
         th.Property("name", th.StringType, required=True),
-        th.Property(
-            "link",
-            th.ObjectType(
-                th.Property(
-                    "@attributes",
-                    th.ObjectType(
-                        th.Property("href", th.StringType),
-                    ),
-                ),
-            ),
-        ),
+        th.Property("link", th.StringType),
     ).to_dict()
 
     def parse_response(self, response: requests.Response):
@@ -78,6 +68,16 @@ class AccountStream(LightspeedRSeriesStream):
     ) -> Dict[str, Any]:
         return {}
 
+    def post_process(self, row: dict, context: Optional[dict]) -> dict:
+        # Convert link to JSON string for consistency
+        if "link" in row:
+            if row["link"] and row["link"] != "":
+                row["link"] = json.dumps(row["link"])
+            else:
+                row["link"] = None
+        
+        return row
+
 
 class ItemStream(LightspeedRSeriesStream):
     """Define custom stream."""
@@ -119,16 +119,16 @@ class ItemStream(LightspeedRSeriesStream):
         th.Property("seasonID", th.StringType),
         th.Property("defaultVendorID", th.StringType),
         th.Property("laborDurationMinutes", th.StringType),
-        th.Property("Category", th.StringType),  # Stored as JSON string
-        th.Property("TaxClass", th.StringType),  # Stored as JSON string
-        th.Property("Manufacturer", th.StringType),  # Stored as JSON string
-        th.Property("Note", th.StringType),  # Stored as JSON string
-        th.Property("ItemShops", th.StringType),  # Stored as JSON string
-        th.Property("ItemVendorNums", th.StringType),  # Stored as JSON string
-        th.Property("ItemComponents", th.StringType),  # Stored as JSON string
-        th.Property("ItemUUID", th.StringType),  # Stored as JSON string
-        th.Property("Prices", th.StringType),  # Stored as JSON string
-        th.Property("Tags", th.StringType),  # Stored as JSON string
+        th.Property("Category", th.StringType),
+        th.Property("TaxClass", th.StringType),
+        th.Property("Manufacturer", th.StringType),
+        th.Property("Note", th.StringType),
+        th.Property("ItemShops", th.StringType),
+        th.Property("ItemVendorNums", th.StringType),
+        th.Property("ItemComponents", th.StringType),
+        th.Property("ItemUUID", th.StringType),
+        th.Property("Prices", th.StringType),
+        th.Property("Tags", th.StringType),
     ).to_dict()
 
     def get_url_params(
@@ -183,27 +183,9 @@ class VendorStream(LightspeedRSeriesStream):
         th.Property("shareSellThrough", th.StringType),
         th.Property("timeStamp", th.DateTimeType, required=True),
         th.Property("b2bSellerUID", th.StringType),
-        th.Property(
-            "purchasingCurrency",
-            th.ObjectType(
-                th.Property("code", th.StringType),
-                th.Property("symbol", th.StringType),
-                th.Property("rate", th.StringType),
-            ),
-        ),
-        th.Property("Contact", th.StringType),  # Stored as JSON string for robustness
-        th.Property(
-            "Reps",
-            th.ObjectType(
-                th.Property(
-                    "VendorRep",
-                    th.ObjectType(
-                        th.Property("firstName", th.StringType),
-                        th.Property("lastName", th.StringType),
-                    ),
-                ),
-            ),
-        ),
+        th.Property("purchasingCurrency", th.StringType),
+        th.Property("Contact", th.StringType),
+        th.Property("Reps", th.StringType),
     ).to_dict()
 
     def get_url_params(
@@ -218,12 +200,14 @@ class VendorStream(LightspeedRSeriesStream):
             row["accountID"] = context.get("accountID")
             row["account_name"] = context.get("account_name")
         
-        # Convert Contact to JSON string for simplicity and robustness
-        if "Contact" in row:
-            if row["Contact"] and row["Contact"] != "":
-                row["Contact"] = json.dumps(row["Contact"])
+        # Convert all relation fields to JSON strings for simplicity
+        relation_fields = ["Contact", "purchasingCurrency", "Reps"]
+        for field in relation_fields:
+            if field in row:
+                if row[field] and row[field] != "":
+                    row[field] = json.dumps(row[field])
             else:
-                row["Contact"] = None
+                    row[field] = None
         
         return row
 
@@ -278,35 +262,7 @@ class OrderStream(LightspeedRSeriesStream):
         th.Property("noteID", th.StringType),
         th.Property("shopID", th.StringType),
         th.Property("createdByEmployeeID", th.StringType),
-        th.Property(
-            "OrderLines",
-            th.ObjectType(
-                th.Property(
-                    "OrderLine",
-                    th.ArrayType(
-                        th.ObjectType(
-                            th.Property("orderLineID", th.StringType),
-                            th.Property("quantity", th.StringType),
-                            th.Property("price", th.StringType),
-                            th.Property("originalPrice", th.StringType),
-                            th.Property("vendorCost", th.StringType),
-                            th.Property("checkedIn", th.StringType),
-                            th.Property("numReceived", th.StringType),
-                            th.Property("timeStamp", th.DateTimeType),
-                            th.Property("total", th.StringType),
-                            th.Property("createTime", th.DateTimeType),
-                            th.Property("shippingCost", th.StringType),
-                            th.Property("shippingVendorCost", th.StringType),
-                            th.Property("discountMoneyValue", th.StringType),
-                            th.Property("discountMoneyVendorValue", th.StringType),
-                            th.Property("discountPercentValue", th.StringType),
-                            th.Property("orderID", th.StringType),
-                            th.Property("itemID", th.StringType),
-                        ),
-                    ),
-                ),
-            ),
-        ),
+        th.Property("OrderLines", th.StringType),
     ).to_dict()
 
     def parse_response(self, response: requests.Response):
@@ -352,15 +308,12 @@ class OrderStream(LightspeedRSeriesStream):
             row["accountID"] = context.get("accountID")
             row["account_name"] = context.get("account_name")
         
-        # Normalize OrderLines.OrderLine: convert single object to array
-        if "OrderLines" in row and row["OrderLines"]:
-            order_lines = row["OrderLines"]
-            if "OrderLine" in order_lines:
-                order_line = order_lines["OrderLine"]
-                if isinstance(order_line, dict):
-                    order_lines["OrderLine"] = [order_line]
-                elif not isinstance(order_line, list):
-                    order_lines["OrderLine"] = []
+        # Convert OrderLines to JSON string for simplicity
+        if "OrderLines" in row:
+            if row["OrderLines"] and row["OrderLines"] != "":
+                row["OrderLines"] = json.dumps(row["OrderLines"])
+            else:
+                row["OrderLines"] = None
         
         return row
 
@@ -426,61 +379,8 @@ class SaleStream(LightspeedRSeriesStream):
         th.Property("tipEmployeeID", th.StringType),
         th.Property("tippableAmount", th.StringType),
         th.Property("taxTotal", th.StringType),
-        th.Property(
-            "SaleLines",
-            th.ObjectType(
-                th.Property(
-                    "SaleLine",
-                    th.ArrayType(
-                        th.ObjectType(
-                            th.Property("saleLineID", th.StringType),
-                            th.Property("createTime", th.DateTimeType),
-                            th.Property("timeStamp", th.DateTimeType),
-                            th.Property("unitQuantity", th.StringType),
-                            th.Property("unitPrice", th.StringType),
-                            th.Property("normalUnitPrice", th.StringType),
-                            th.Property("discountAmount", th.StringType),
-                            th.Property("discountPercent", th.StringType),
-                            th.Property("avgCost", th.StringType),
-                            th.Property("fifoCost", th.StringType),
-                            th.Property("tax", th.StringType),
-                            th.Property("tax1Rate", th.StringType),
-                            th.Property("tax2Rate", th.StringType),
-                            th.Property("isLayaway", th.StringType),
-                            th.Property("isWorkorder", th.StringType),
-                            th.Property("isSpecialOrder", th.StringType),
-                            th.Property("displayableSubtotal", th.StringType),
-                            th.Property("displayableUnitPrice", th.StringType),
-                            th.Property("lineType", th.StringType),
-                            th.Property("calcLineDiscount", th.StringType),
-                            th.Property("calcTransactionDiscount", th.StringType),
-                            th.Property("calcTotal", th.StringType),
-                            th.Property("calcSubtotal", th.StringType),
-                            th.Property("calcTax1", th.StringType),
-                            th.Property("calcTax2", th.StringType),
-                            th.Property("taxClassID", th.StringType),
-                            th.Property("customerID", th.StringType),
-                            th.Property("discountID", th.StringType),
-                            th.Property("employeeID", th.StringType),
-                            th.Property("itemID", th.StringType),
-                            th.Property("noteID", th.StringType),
-                            th.Property("parentSaleLineID", th.StringType),
-                            th.Property("shopID", th.StringType),
-                            th.Property("saleID", th.StringType),
-                            th.Property("itemFeeID", th.StringType),
-                        ),
-                    ),
-                ),
-            ),
-        ),
-        th.Property(
-            "MetaData",
-            th.ObjectType(
-                th.Property("tipOption1", th.StringType),
-                th.Property("tipOption2", th.StringType),
-                th.Property("tipOption3", th.StringType),
-            ),
-        ),
+        th.Property("SaleLines", th.StringType),
+        th.Property("MetaData", th.StringType),
     ).to_dict()
 
     def get_url_params(
@@ -495,15 +395,14 @@ class SaleStream(LightspeedRSeriesStream):
             row["accountID"] = context.get("accountID")
             row["account_name"] = context.get("account_name")
         
-        # Normalize SaleLines.SaleLine: convert single object to array
-        if "SaleLines" in row and row["SaleLines"]:
-            sale_lines = row["SaleLines"]
-            if "SaleLine" in sale_lines:
-                sale_line = sale_lines["SaleLine"]
-                if isinstance(sale_line, dict):
-                    sale_lines["SaleLine"] = [sale_line]
-                elif not isinstance(sale_line, list):
-                    sale_lines["SaleLine"] = []
+        # Convert relation fields to JSON strings for simplicity
+        relation_fields = ["SaleLines", "MetaData"]
+        for field in relation_fields:
+            if field in row:
+                if row[field] and row[field] != "":
+                    row[field] = json.dumps(row[field])
+                else:
+                    row[field] = None
         
         return row
 
@@ -555,86 +454,7 @@ class ShipmentStream(LightspeedRSeriesStream):
         th.Property("cost", th.StringType),
         th.Property("vendorCost", th.StringType),
         th.Property("status", th.StringType),
-        th.Property(
-            "OrderShipmentItems",
-            th.ObjectType(
-                th.Property(
-                    "OrderShipmentItem",
-                    th.ArrayType(
-                        th.ObjectType(
-                            th.Property("orderShipmentItemID", th.StringType),
-                            th.Property("orderShipmentID", th.StringType),
-                            th.Property("qtyReceived", th.StringType),
-                            th.Property("vendorCost", th.StringType),
-                            th.Property("cost", th.StringType),
-                            th.Property("totalVendorCost", th.StringType),
-                            th.Property("totalCost", th.StringType),
-                            th.Property("shippingCost", th.StringType),
-                            th.Property("shippingVendorCost", th.StringType),
-                            th.Property("discountMoneyValue", th.StringType),
-                            th.Property("discountMoneyVendorValue", th.StringType),
-                            th.Property("discountPercentValue", th.StringType),
-                            th.Property("currencyCode", th.StringType),
-                            th.Property("vendorCurrencyCode", th.StringType),
-                            th.Property("vendorCurrencyRate", th.StringType),
-                            th.Property("createTime", th.DateTimeType),
-                            th.Property("timeStamp", th.DateTimeType),
-                            th.Property("employeeID", th.StringType),
-                            th.Property("itemID", th.StringType),
-                            th.Property("itemVendorID", th.StringType),
-                            th.Property("itemDescription", th.StringType),
-                            th.Property(
-                                "Item",
-                                th.ObjectType(
-                                    th.Property("itemID", th.StringType),
-                                    th.Property("systemSku", th.StringType),
-                                    th.Property("defaultCost", th.StringType),
-                                    th.Property("avgCost", th.StringType),
-                                    th.Property("fifoCost", th.StringType),
-                                    th.Property("discountable", th.StringType),
-                                    th.Property("tax", th.StringType),
-                                    th.Property("archived", th.StringType),
-                                    th.Property("itemType", th.StringType),
-                                    th.Property("serialized", th.StringType),
-                                    th.Property("description", th.StringType),
-                                    th.Property("modelYear", th.StringType),
-                                    th.Property("upc", th.StringType),
-                                    th.Property("ean", th.StringType),
-                                    th.Property("customSku", th.StringType),
-                                    th.Property("manufacturerSku", th.StringType),
-                                    th.Property("publishToEcom", th.StringType),
-                                    th.Property("timeStamp", th.DateTimeType),
-                                    th.Property("createTime", th.DateTimeType),
-                                    th.Property("categoryID", th.StringType),
-                                    th.Property("taxClassID", th.StringType),
-                                    th.Property("departmentID", th.StringType),
-                                    th.Property("itemMatrixID", th.StringType),
-                                    th.Property("itemAttributesID", th.StringType),
-                                    th.Property("manufacturerID", th.StringType),
-                                    th.Property("seasonID", th.StringType),
-                                    th.Property("defaultVendorID", th.StringType),
-                                    th.Property(
-                                        "Prices",
-                                        th.ObjectType(
-                                            th.Property(
-                                                "ItemPrice",
-                                                th.ArrayType(
-                                                    th.ObjectType(
-                                                        th.Property("amount", th.StringType),
-                                                        th.Property("useType", th.StringType),
-                                                        th.Property("useTypeID", th.StringType),
-                                                    ),
-                                                ),
-                                            ),
-                                        ),
-                                    ),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-            ),
-        ),
+        th.Property("OrderShipmentItems", th.StringType),
     ).to_dict()
 
     def get_url_params(
@@ -649,15 +469,12 @@ class ShipmentStream(LightspeedRSeriesStream):
             row["accountID"] = context.get("accountID")
             row["account_name"] = context.get("account_name")
         
-        # Normalize OrderShipmentItems.OrderShipmentItem: convert single object to array
-        if "OrderShipmentItems" in row and row["OrderShipmentItems"]:
-            shipment_items = row["OrderShipmentItems"]
-            if "OrderShipmentItem" in shipment_items:
-                shipment_item = shipment_items["OrderShipmentItem"]
-                if isinstance(shipment_item, dict):
-                    shipment_items["OrderShipmentItem"] = [shipment_item]
-                elif not isinstance(shipment_item, list):
-                    shipment_items["OrderShipmentItem"] = []
+        # Convert OrderShipmentItems to JSON string for simplicity
+        if "OrderShipmentItems" in row:
+            if row["OrderShipmentItems"] and row["OrderShipmentItems"] != "":
+                row["OrderShipmentItems"] = json.dumps(row["OrderShipmentItems"])
+            else:
+                row["OrderShipmentItems"] = None
         
         return row
 
@@ -698,13 +515,13 @@ class ShopStream(LightspeedRSeriesStream):
         th.Property("ccGatewayID", th.StringType),
         th.Property("gatewayConfigID", th.StringType),
         th.Property("priceLevelID", th.StringType),
-        th.Property("Contact", th.StringType),  # Stored as JSON string
-        th.Property("ReceiptSetup", th.StringType),  # Stored as JSON string
-        th.Property("TaxCategory", th.StringType),  # Stored as JSON string
-        th.Property("ShelfLocations", th.StringType),  # Stored as JSON string
-        th.Property("Registers", th.StringType),  # Stored as JSON string
-        th.Property("CCGateway", th.StringType),  # Stored as JSON string
-        th.Property("PriceLevel", th.StringType),  # Stored as JSON string
+        th.Property("Contact", th.StringType),
+        th.Property("ReceiptSetup", th.StringType),
+        th.Property("TaxCategory", th.StringType),
+        th.Property("ShelfLocations", th.StringType),
+        th.Property("Registers", th.StringType),
+        th.Property("CCGateway", th.StringType),
+        th.Property("PriceLevel", th.StringType),
     ).to_dict()
 
     def get_url_params(
