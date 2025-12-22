@@ -22,6 +22,10 @@ class LightspeedOAuthAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
     ) -> None:
         super().__init__(stream=stream, auth_endpoint=auth_endpoint, oauth_scopes=oauth_scopes)
         self._tap = stream._tap
+        
+        # Try to load existing token from config if available
+        if "access_token" in self.config:
+            self.access_token = self.config["access_token"]
 
     @property
     def oauth_request_body(self) -> dict:
@@ -35,19 +39,27 @@ class LightspeedOAuthAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
 
     def is_token_valid(self) -> bool:
         """Check if token is valid.
+        
+        Returns True if we have a token, allowing the API to decide if it's valid.
+        If the API returns 401, the token will be refreshed automatically.
 
         Returns:
-            True if the token is valid (fresh).
+            True if we have an access_token (let API validate it).
         """
-        if self.expires_in is not None:
-            self.expires_in = int(self.expires_in)
-        if self.last_refreshed is None:
-            return False
-        if not self.expires_in:
-            return True
-        if self.expires_in > (utils.now() - self.last_refreshed).total_seconds():
-            return True
-        return False
+        # If we have an access_token, assume it's valid and let the API decide
+        # If API returns 401, the refresh will happen automatically
+        if not hasattr(self, 'access_token') or not self.access_token:
+            # Try to load from config
+            if "access_token" in self.config:
+                self.access_token = self.config["access_token"]
+                self.logger.debug("Loaded access_token from config for validation check")
+                return True
+            else:
+                self.logger.debug("No access_token found in config")
+                return False
+        
+        # We have a token, assume it's valid - API will tell us if it's not
+        return True
 
     @classmethod
     def create_for_stream(cls, stream) -> "LightspeedOAuthAuthenticator":

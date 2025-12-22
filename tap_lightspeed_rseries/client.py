@@ -106,6 +106,16 @@ class LightspeedRSeriesStream(RESTStream):
 
     def validate_response(self, response: requests.Response) -> None:
         if response.status_code in [401]:
+            # Token expired, force refresh by invalidating current token
+            self.logger.info("Received 401 Unauthorized, token may have expired. Refreshing token...")
+            if hasattr(self.authenticator, 'access_token'):
+                # Invalidate token to force refresh on next request
+                self.authenticator.access_token = None
+                self.authenticator.last_refreshed = None
+                # Force refresh
+                self.authenticator.update_access_token()
+                self.logger.info("Token refreshed after 401 error, request will be retried")
+            
             msg = (
                 f"{response.status_code} Server Error: "
                 f"{response.reason} for path: {self.path} with response {response.text}"
