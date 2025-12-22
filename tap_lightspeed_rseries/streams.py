@@ -660,3 +660,75 @@ class ShipmentStream(LightspeedRSeriesStream):
                     shipment_items["OrderShipmentItem"] = []
         
         return row
+
+
+class ShopStream(LightspeedRSeriesStream):
+    """Define Shop stream.
+    
+    Endpoint: GET /API/V3/Account/{accountID}/Shop.json
+    Documentation: https://developers.lightspeedhq.com/retail/endpoints/Shop/
+    """
+
+    name = "shops"
+    parent_stream_type = AccountStream
+    path = "/Account/{accountID}/Shop.json"
+    primary_keys = ["shopID"]
+    replication_key = "timeStamp"
+
+    records_jsonpath = "$.Shop[*]"
+
+    schema = th.PropertiesList(
+        th.Property("accountID", th.StringType, required=True),
+        th.Property("account_name", th.StringType),
+        th.Property("shopID", th.StringType, required=True),
+        th.Property("name", th.StringType),
+        th.Property("serviceRate", th.StringType),
+        th.Property("timeZone", th.StringType),
+        th.Property("taxLabor", th.StringType),
+        th.Property("labelTitle", th.StringType),
+        th.Property("labelMsrp", th.StringType),
+        th.Property("archived", th.StringType),
+        th.Property("timeStamp", th.DateTimeType, required=True),
+        th.Property("companyRegistrationNumber", th.StringType),
+        th.Property("vatNumber", th.StringType),
+        th.Property("zebraBrowserPrint", th.StringType),
+        th.Property("contactID", th.StringType),
+        th.Property("taxCategoryID", th.StringType),
+        th.Property("receiptSetupID", th.StringType),
+        th.Property("ccGatewayID", th.StringType),
+        th.Property("gatewayConfigID", th.StringType),
+        th.Property("priceLevelID", th.StringType),
+        th.Property("Contact", th.StringType),  # Stored as JSON string
+        th.Property("ReceiptSetup", th.StringType),  # Stored as JSON string
+        th.Property("TaxCategory", th.StringType),  # Stored as JSON string
+        th.Property("ShelfLocations", th.StringType),  # Stored as JSON string
+        th.Property("Registers", th.StringType),  # Stored as JSON string
+        th.Property("CCGateway", th.StringType),  # Stored as JSON string
+        th.Property("PriceLevel", th.StringType),  # Stored as JSON string
+    ).to_dict()
+
+    def get_url_params(
+        self, context: Optional[dict], next_page_token: Optional[Any]
+    ) -> Dict[str, Any]:
+        params = super().get_url_params(context, next_page_token)
+        params["load_relations"] = "all"
+        return params
+
+    def post_process(self, row: dict, context: Optional[dict]) -> dict:
+        if context:
+            row["accountID"] = context.get("accountID")
+            row["account_name"] = context.get("account_name")
+        
+        # Convert all relation fields to JSON strings for simplicity
+        relation_fields = [
+            "Contact", "ReceiptSetup", "TaxCategory", "ShelfLocations",
+            "Registers", "CCGateway", "PriceLevel"
+        ]
+        for field in relation_fields:
+            if field in row:
+                if row[field] and row[field] != "":
+                    row[field] = json.dumps(row[field])
+                else:
+                    row[field] = None
+        
+        return row
