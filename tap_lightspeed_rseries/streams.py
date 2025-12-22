@@ -119,159 +119,16 @@ class ItemStream(LightspeedRSeriesStream):
         th.Property("seasonID", th.StringType),
         th.Property("defaultVendorID", th.StringType),
         th.Property("laborDurationMinutes", th.StringType),
-        th.Property(
-            "Category",
-            th.ObjectType(
-                th.Property("categoryID", th.StringType),
-                th.Property("name", th.StringType),
-                th.Property("nodeDepth", th.StringType),
-                th.Property("fullPathName", th.StringType),
-                th.Property("leftNode", th.StringType),
-                th.Property("rightNode", th.StringType),
-                th.Property("createTime", th.DateTimeType),
-                th.Property("timeStamp", th.DateTimeType),
-                th.Property("parentID", th.StringType),
-            ),
-        ),
-        th.Property(
-            "TaxClass",
-            th.ObjectType(
-                th.Property("taxClassID", th.StringType),
-                th.Property("name", th.StringType),
-                th.Property("classType", th.StringType),
-                th.Property("timeStamp", th.DateTimeType),
-            ),
-        ),
-        th.Property(
-            "Manufacturer",
-            th.ObjectType(
-                th.Property("manufacturerID", th.StringType),
-                th.Property("name", th.StringType),
-                th.Property("createTime", th.DateTimeType),
-                th.Property("timeStamp", th.DateTimeType),
-            ),
-        ),
-        th.Property(
-            "Note",
-            th.ObjectType(
-                th.Property("note", th.StringType),
-                th.Property("isPublic", th.StringType),
-                th.Property("timeStamp", th.DateTimeType),
-            ),
-        ),
-        th.Property(
-            "ItemShops",
-            th.ObjectType(
-                th.Property(
-                    "ItemShop",
-                    th.ArrayType(
-                        th.ObjectType(
-                            th.Property("itemShopID", th.StringType),
-                            th.Property("qoh", th.StringType),
-                            th.Property("sellable", th.StringType),
-                            th.Property("backorder", th.StringType),
-                            th.Property("componentQoh", th.StringType),
-                            th.Property("componentBackorder", th.StringType),
-                            th.Property("onLayaway", th.StringType),
-                            th.Property("onSpecialOrder", th.StringType),
-                            th.Property("onWorkorder", th.StringType),
-                            th.Property("onTransferOut", th.StringType),
-                            th.Property("onTransferIn", th.StringType),
-                            th.Property("averageCost", th.StringType),
-                            th.Property("totalValueFifo", th.StringType),
-                            th.Property("totalValueAvgCost", th.StringType),
-                            th.Property("totalValueNegativeInventory", th.StringType),
-                            th.Property("lastReceivedCost", th.StringType),
-                            th.Property("nextFifoLotCost", th.StringType),
-                            th.Property("reorderPoint", th.StringType),
-                            th.Property("reorderLevel", th.StringType),
-                            th.Property("timeStamp", th.DateTimeType),
-                            th.Property("itemID", th.StringType),
-                            th.Property("shopID", th.StringType),
-                            th.Property("lastReceivedLotID", th.StringType),
-                            th.Property("nextFifoLotID", th.StringType),
-                        ),
-                    ),
-                ),
-            ),
-        ),
-        th.Property(
-            "ItemVendorNums",
-            th.ObjectType(
-                th.Property(
-                    "ItemVendorNum",
-                    th.ArrayType(
-                        th.ObjectType(
-                            th.Property("itemVendorNumID", th.StringType),
-                            th.Property("value", th.StringType),
-                            th.Property("timeStamp", th.DateTimeType),
-                            th.Property("cost", th.StringType),
-                            th.Property("b2bCatalogUUID", th.StringType),
-                            th.Property("itemID", th.StringType),
-                            th.Property("vendorID", th.StringType),
-                        ),
-                    ),
-                ),
-            ),
-        ),
-        th.Property(
-            "ItemComponents",
-            th.ObjectType(
-                th.Property(
-                    "ItemComponent",
-                    th.ArrayType(
-                        th.ObjectType(
-                            th.Property("itemComponentID", th.StringType),
-                            th.Property("quantity", th.StringType),
-                            th.Property("componentGroup", th.StringType),
-                            th.Property("assemblyItemID", th.StringType),
-                            th.Property("componentItemID", th.StringType),
-                        ),
-                    ),
-                ),
-            ),
-        ),
-        th.Property(
-            "ItemUUID",
-            th.ObjectType(
-                th.Property(
-                    "ItemUUID",
-                    th.ObjectType(
-                        th.Property("productUUID", th.StringType),
-                    ),
-                ),
-            ),
-        ),
-        th.Property(
-            "Prices",
-            th.ObjectType(
-                th.Property(
-                    "ItemPrice",
-                    th.ArrayType(
-                        th.ObjectType(
-                            th.Property("amount", th.StringType),
-                            th.Property("useTypeID", th.StringType),
-                            th.Property("useType", th.StringType),
-                        ),
-                    ),
-                ),
-            ),
-        ),
-        th.Property(
-            "Tags",
-            th.ObjectType(
-                th.Property(
-                    "@attributes",
-                    th.ObjectType(
-                        th.Property("count", th.StringType),
-                    ),
-                ),
-                th.Property(
-                    "tag",
-                    th.ArrayType(th.StringType),
-                ),
-            ),
-        ),
+        th.Property("Category", th.StringType),  # Stored as JSON string
+        th.Property("TaxClass", th.StringType),  # Stored as JSON string
+        th.Property("Manufacturer", th.StringType),  # Stored as JSON string
+        th.Property("Note", th.StringType),  # Stored as JSON string
+        th.Property("ItemShops", th.StringType),  # Stored as JSON string
+        th.Property("ItemVendorNums", th.StringType),  # Stored as JSON string
+        th.Property("ItemComponents", th.StringType),  # Stored as JSON string
+        th.Property("ItemUUID", th.StringType),  # Stored as JSON string
+        th.Property("Prices", th.StringType),  # Stored as JSON string
+        th.Property("Tags", th.StringType),  # Stored as JSON string
     ).to_dict()
 
     def get_url_params(
@@ -286,29 +143,17 @@ class ItemStream(LightspeedRSeriesStream):
             row["accountID"] = context.get("accountID")
             row["account_name"] = context.get("account_name")
         
-        # Normalize ItemVendorNums.ItemVendorNum: convert single object to array
-        if "ItemVendorNums" in row and row["ItemVendorNums"]:
-            item_vendor_nums = row["ItemVendorNums"]
-            if "ItemVendorNum" in item_vendor_nums:
-                item_vendor_num = item_vendor_nums["ItemVendorNum"]
-                # If it's a dict (single object), convert to array
-                if isinstance(item_vendor_num, dict):
-                    item_vendor_nums["ItemVendorNum"] = [item_vendor_num]
-                # If it's already a list, keep it as is
-                elif not isinstance(item_vendor_num, list):
-                    item_vendor_nums["ItemVendorNum"] = []
-        
-        # Normalize ItemComponents.ItemComponent: convert single object to array
-        if "ItemComponents" in row and row["ItemComponents"]:
-            item_components = row["ItemComponents"]
-            if "ItemComponent" in item_components:
-                item_component = item_components["ItemComponent"]
-                # If it's a dict (single object), convert to array
-                if isinstance(item_component, dict):
-                    item_components["ItemComponent"] = [item_component]
-                # If it's already a list, keep it as is
-                elif not isinstance(item_component, list):
-                    item_components["ItemComponent"] = []
+        # Convert all relation fields to JSON strings for simplicity
+        relation_fields = [
+            "Category", "TaxClass", "Manufacturer", "Note", "ItemShops",
+            "ItemVendorNums", "ItemComponents", "ItemUUID", "Prices", "Tags"
+        ]
+        for field in relation_fields:
+            if field in row:
+                if row[field] and row[field] != "":
+                    row[field] = json.dumps(row[field])
+                else:
+                    row[field] = None
         
         return row
 

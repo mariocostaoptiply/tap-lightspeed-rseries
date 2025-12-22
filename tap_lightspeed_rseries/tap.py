@@ -1,4 +1,4 @@
-"""Lightspeed tap class."""
+"""Lightspeed R-Series tap class."""
 
 from typing import List
 
@@ -67,16 +67,10 @@ class TapRLightspeed(Tap):
             required=False,
         ),
         th.Property(
-            "account_ids",
+            "account_id",
             th.StringType,
             required=False,
-            description="Optional company ID(s) to sync. Can be a single company ID string or comma-separated company IDs. If not provided, all companies will be synced.",
-        ),
-        th.Property(
-            "shop_ids",
-            th.IntegerType,
-            required=False,
-            description="Required shop ID to export data to.",
+            description="Optional account ID to sync. If not provided, all accounts will be synced.",
         )
     ).to_dict()
 

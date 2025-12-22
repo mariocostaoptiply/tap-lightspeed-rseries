@@ -122,17 +122,45 @@ class LightspeedOAuthAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
             )
         self.last_refreshed = request_time
 
+        # Helper function to mask token for logging (show first 8 and last 4 chars)
+        def mask_token(token: str) -> str:
+            if not token or len(token) <= 12:
+                return "***"
+            return f"{token[:8]}...{token[-4:]}"
+
+        # Log token information for debugging - access token full display
+        self.logger.info(
+            f"Token refreshed successfully. Access token: {token_json['access_token']}, "
+            f"expires in: {self.expires_in} seconds"
+        )
+
         # store access_token in config file
         self._tap._config["access_token"] = token_json["access_token"]
+        refresh_token_updated = False
         if "refresh_token" in token_json:
             self._tap._config["refresh_token"] = token_json["refresh_token"]
+            refresh_token_updated = True
+            refresh_token_masked = mask_token(token_json["refresh_token"])
+            self.logger.info(f"Refresh token updated: {refresh_token_masked}")
+        else:
+            self.logger.debug("No refresh_token in response, keeping existing one")
         
         # Store expires timestamp
         if self.expires_in:
             expires_timestamp = int(request_time.timestamp()) + int(self.expires_in)
             self._tap._config["expires"] = expires_timestamp
+            from datetime import datetime
+            expires_datetime = datetime.fromtimestamp(expires_timestamp)
+            self.logger.info(f"Token expires at: {expires_datetime.isoformat()}")
         self._tap._config["expires_in"] = self.expires_in
 
+        # Save config to file
         with open(self._tap.config_file, "w") as outfile:
             json.dump(self._tap._config, outfile, indent=4)
+        
+        self.logger.info(
+            f"Tokens saved to config file: {self._tap.config_file}. "
+            f"Access token: updated, "
+            f"Refresh token: {'updated' if refresh_token_updated else 'unchanged'}"
+        )
 

@@ -38,4 +38,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 # CLI declaration
-tap-lightspeed-r-series = "tap_lightspeed_rseries.tap:TapRLightspeed.cli"
+tap-lightspeed-rseries = "tap_lightspeed_rseries.tap:TapRLightspeed.cli"
