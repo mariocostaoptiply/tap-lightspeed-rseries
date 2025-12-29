@@ -73,7 +73,25 @@ class TapRLightspeed(Tap):
             th.StringType,
             required=False,
             description="Optional account ID to sync. If not provided, all accounts will be synced.",
-        )
+        ),
+        th.Property(
+            "items_relations",
+            th.StringType,
+            required=False,
+            description="Optional items relations to sync. If not provided, all relations will be synced.",
+        ),
+        th.Property(
+            "vendors_relations",
+            th.StringType,
+            required=False,
+            description="Optional vendors relations to sync. If not provided, all relations will be synced.",
+        ),
+        th.Property(
+            "orders_relations",
+            th.StringType,
+            required=False,
+            description="Optional orders relations to sync. If not provided, all relations will be synced.",
+            ),
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:
