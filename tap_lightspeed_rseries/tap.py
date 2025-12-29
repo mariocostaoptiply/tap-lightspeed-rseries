@@ -92,6 +92,12 @@ class TapRLightspeed(Tap):
             required=False,
             description="Optional orders relations to sync. If not provided, all relations will be synced.",
             ),
+        th.Property(
+            "sales_relations",
+            th.StringType,
+            required=False,
+            description="Optional sales relations to sync. If not provided, all relations will be synced.",
+        ),
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:

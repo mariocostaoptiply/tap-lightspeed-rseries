@@ -408,7 +408,15 @@ class SaleStream(LightspeedRSeriesStream):
         self, context: Optional[dict], next_page_token: Optional[Any]
     ) -> Dict[str, Any]:
         params = super().get_url_params(context, next_page_token)
-        params["load_relations"] = json.dumps(["SaleLines"])
+        
+        relations = self.config.get("sales_relations", "all")
+        
+        if relations != "all":
+            relations = [relation.strip() for relation in relations.split(",") if relation.strip()]
+            params["load_relations"] = json.dumps(relations)
+        else:
+            params["load_relations"] = "all"
+        
         return params
 
     def post_process(self, row: dict, context: Optional[dict]) -> dict:
