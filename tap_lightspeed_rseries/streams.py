@@ -135,7 +135,14 @@ class ItemStream(LightspeedRSeriesStream):
         self, context: Optional[dict], next_page_token: Optional[Any]
     ) -> Dict[str, Any]:
         params = super().get_url_params(context, next_page_token)
-        params["load_relations"] = "all"
+        
+        relations = self.config.get("items_relations", "all")
+        
+        if relations != "all":
+            relations = [relation.strip() for relation in relations.split(",") if relation.strip()]
+            params["load_relations"] = json.dumps(relations)
+        else:
+            params["load_relations"] = "all"
         return params
 
     def post_process(self, row: dict, context: Optional[dict]) -> dict:
@@ -192,7 +199,14 @@ class VendorStream(LightspeedRSeriesStream):
         self, context: Optional[dict], next_page_token: Optional[Any]
     ) -> Dict[str, Any]:
         params = super().get_url_params(context, next_page_token)
-        params["load_relations"] = json.dumps(["Contact"])
+        
+        relations = self.config.get("vendors_relations", "all")
+        
+        if relations != "all":
+            relations = [relation.strip() for relation in relations.split(",") if relation.strip()]
+            params["load_relations"] = json.dumps(relations)
+        else:
+            params["load_relations"] = "all"
         return params
 
     def post_process(self, row: dict, context: Optional[dict]) -> dict:
@@ -300,7 +314,14 @@ class OrderStream(LightspeedRSeriesStream):
         self, context: Optional[dict], next_page_token: Optional[Any]
     ) -> Dict[str, Any]:
         params = super().get_url_params(context, next_page_token)
-        params["load_relations"] = json.dumps(["OrderLines"])
+        
+        relations = self.config.get("orders_relations", "all")
+        
+        if relations != "all":
+            relations = [relation.strip() for relation in relations.split(",") if relation.strip()]
+            params["load_relations"] = json.dumps(relations)
+        else:
+            params["load_relations"] = "all"
         return params
 
     def post_process(self, row: dict, context: Optional[dict]) -> dict:
