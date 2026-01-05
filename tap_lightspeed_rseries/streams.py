@@ -498,6 +498,9 @@ class ShipmentStream(LightspeedRSeriesStream):
             params["load_relations"] = json.dumps(relations)
         else:
             params["load_relations"] = "all"
+            # Reduzir limit quando carregar todas as relações para evitar timeout
+            params["limit"] = 50  # Reduzir de 100 para 50
+        
         return params
 
     def post_process(self, row: dict, context: Optional[dict]) -> dict:
