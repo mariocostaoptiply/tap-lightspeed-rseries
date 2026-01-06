@@ -1,7 +1,6 @@
 """REST client handling, including LightspeedRSeriesStream base class."""
 
 from typing import Any, Dict, Optional
-from datetime import datetime
 from pytz import timezone
 import requests
 import copy
@@ -19,6 +18,7 @@ class LightspeedRSeriesStream(RESTStream):
     page_size = 100
     timeout = 300
     records_jsonpath = "$[*]"
+    _replication_key_logged = False  # Flag to track if replication key info was already logged
 
     @cached_property
     def url_base(self) -> str:
@@ -58,20 +58,21 @@ class LightspeedRSeriesStream(RESTStream):
         Returns the replication_key value from state if available,
         otherwise falls back to start_date from config.
         """
-        start_date = self.config.get("start_date")
-        if start_date:
-            try:
-                from pendulum import parse
-                start_date = parse(start_date)
-            except Exception:
-                self.logger.warning(f"Failed to parse start_date: {start_date}")
-                start_date = None
-        
-        # Get replication_key value from state (last synced value)
+        # Get replication_key value from state (last synced value) first
         rep_key = self.get_starting_timestamp(context)
         
-        # Use replication_key from state if available, otherwise use start_date from config
-        return rep_key or start_date
+        # If no replication_key in state, fall back to start_date from config
+        if not rep_key:
+            start_date = self.config.get("start_date")
+            if start_date:
+                try:
+                    from pendulum import parse
+                    rep_key = parse(start_date)
+                except Exception:
+                    self.logger.warning(f"Failed to parse start_date: {start_date}")
+                    rep_key = None
+        
+        return rep_key
 
     def get_url_params(
         self, context: Optional[dict], next_page_token: Optional[Any]
@@ -85,19 +86,43 @@ class LightspeedRSeriesStream(RESTStream):
             params["limit"] = min(self.page_size, 100)
         
         # Handle incremental sync with replication_key
+        # Lightspeed R-Series API supports timeStamp filtering with query operators
+        # Format: timeStamp=%3E%3D,YYYY-MM-DDTHH:MM:SS-00:00
+        # See: https://developers.lightspeedhq.com/retail/introduction/parameters/
         if self.replication_key:
             starting_time = self.get_starting_time(context)
             if starting_time:
-                # Note: Lightspeed R-Series API may not support timeStamp filtering in URL
-                # The Singer SDK will automatically filter records client-side
-                # based on replication_key_value stored in state
-                self.logger.info(
-                    f"Incremental sync: filtering records with {self.replication_key} >= {starting_time}"
-                )
+                # Convert to UTC timezone if needed
+                if hasattr(starting_time, 'astimezone'):
+                    starting_time_utc = starting_time.astimezone(timezone('UTC'))
+                else:
+                    # If it's already a timezone-aware datetime in UTC
+                    starting_time_utc = starting_time
+                
+                # Format according to Lightspeed API: YYYY-MM-DDTHH:MM:SS-00:00
+                time_stamp_str = starting_time_utc.strftime("%Y-%m-%dT%H:%M:%S-00:00")
+                
+                # Use query operator >= with comma separator
+                # Format: timeStamp=%3E%3D,YYYY-MM-DDTHH:MM:SS-00:00
+                # The requests library will URL-encode this, encoding >= to %3E%3D
+                # and the comma to %2C. If the API requires unencoded comma, we may
+                # need to override prepare_request, but let's test this first.
+                params["timeStamp"] = f">=,{time_stamp_str}"
+                
+                # Log replication key info only once per stream
+                if not self._replication_key_logged:
+                    self.logger.info(
+                        f"Incremental sync: filtering records with {self.replication_key} >= {starting_time_utc} "
+                        f"(using API filter: timeStamp={params['timeStamp']})"
+                    )
+                    self._replication_key_logged = True
             else:
-                self.logger.info(
-                    f"Full sync: no previous {self.replication_key} value found in state and no start_date configured"
-                )
+                # Log full sync message only once per stream
+                if not self._replication_key_logged:
+                    self.logger.info(
+                        f"Full sync: no previous {self.replication_key} value found in state and no start_date configured"
+                    )
+                    self._replication_key_logged = True
         
         return params
 
