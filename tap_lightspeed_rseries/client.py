@@ -3,6 +3,8 @@
 from typing import Any, Dict, Optional
 from pytz import timezone
 import requests
+from requests.exceptions import ChunkedEncodingError, ConnectionError as RequestsConnectionError
+from urllib3.exceptions import ProtocolError, ReadTimeoutError
 import copy
 from singer_sdk.streams import RESTStream
 from singer_sdk.exceptions import RetriableAPIError, FatalAPIError
@@ -142,11 +144,23 @@ class LightspeedRSeriesStream(RESTStream):
         return super().prepare_request(context, next_page_token)
 
     def make_request(self, context, next_page_token):
+        """Make request with error handling for connection issues."""
         prepared_request = self.prepare_request(
             context, next_page_token=next_page_token
         )
-        resp = self._request(prepared_request, context)
-        return resp
+        try:
+            resp = self._request(prepared_request, context)
+            return resp
+        except (ChunkedEncodingError, ProtocolError, RequestsConnectionError, ReadTimeoutError) as e:
+            # These are connection/network errors that should be retried
+            url = getattr(prepared_request, 'url', self.path or 'unknown endpoint')
+            error_msg = (
+                f"Connection error while requesting {url}: {str(e)}. "
+                f"This is likely a temporary network issue or server-side problem. "
+                f"The request will be retried."
+            )
+            self.logger.warning(error_msg)
+            raise RetriableAPIError(error_msg) from e
     
     def request_records(self, context: Optional[dict]):
         next_page_token: Any = None
