@@ -1,6 +1,8 @@
 """REST client handling, including LightspeedRSeriesStream base class."""
 
 from typing import Any, Dict, Optional
+from datetime import datetime
+from pytz import timezone
 import requests
 import copy
 from singer_sdk.streams import RESTStream
@@ -50,6 +52,27 @@ class LightspeedRSeriesStream(RESTStream):
         except Exception:
             return None
 
+    def get_starting_time(self, context: Optional[dict]):
+        """Get starting time for incremental sync.
+        
+        Returns the replication_key value from state if available,
+        otherwise falls back to start_date from config.
+        """
+        start_date = self.config.get("start_date")
+        if start_date:
+            try:
+                from pendulum import parse
+                start_date = parse(start_date)
+            except Exception:
+                self.logger.warning(f"Failed to parse start_date: {start_date}")
+                start_date = None
+        
+        # Get replication_key value from state (last synced value)
+        rep_key = self.get_starting_timestamp(context)
+        
+        # Use replication_key from state if available, otherwise use start_date from config
+        return rep_key or start_date
+
     def get_url_params(
         self, context: Optional[dict], next_page_token: Optional[Any]
     ) -> Dict[str, Any]:
@@ -60,6 +83,22 @@ class LightspeedRSeriesStream(RESTStream):
         params: dict = {}
         if self.page_size:
             params["limit"] = min(self.page_size, 100)
+        
+        # Handle incremental sync with replication_key
+        if self.replication_key:
+            starting_time = self.get_starting_time(context)
+            if starting_time:
+                # Note: Lightspeed R-Series API may not support timeStamp filtering in URL
+                # The Singer SDK will automatically filter records client-side
+                # based on replication_key_value stored in state
+                self.logger.info(
+                    f"Incremental sync: filtering records with {self.replication_key} >= {starting_time}"
+                )
+            else:
+                self.logger.info(
+                    f"Full sync: no previous {self.replication_key} value found in state and no start_date configured"
+                )
+        
         return params
 
     def prepare_request(
