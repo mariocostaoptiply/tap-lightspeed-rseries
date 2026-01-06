@@ -75,8 +75,31 @@ class LightspeedOAuthAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
         Raises:
             RuntimeError: When OAuth login fails.
         """
+        self.logger.info("Requesting new token from OAuth endpoint...")
         request_time = utc_now()
-        auth_request_payload = self.oauth_request_body
+        
+        # CRITICAL: Read refresh_token directly from _tap._config at the last moment
+        # to avoid race conditions where another refresh might have updated it
+        # This ensures we always use the most recent refresh_token
+        current_refresh_token = self._tap._config.get("refresh_token")
+        if not current_refresh_token:
+            raise RuntimeError("No refresh_token found in config. Cannot refresh access token.")
+        
+        # Build the request payload using the most current refresh_token
+        auth_request_payload = {
+            "client_id": self.config["client_id"],
+            "client_secret": self.config["client_secret"],
+            "grant_type": "refresh_token",
+            "refresh_token": current_refresh_token,
+        }
+        
+        # Log the refresh_token being used BEFORE making the request
+        # This is critical for debugging when the refresh fails
+        self.logger.info("=" * 80)
+        self.logger.info("ATTEMPTING TOKEN REFRESH - Using refresh_token:")
+        self.logger.info(f"refresh_token: {current_refresh_token}")
+        self.logger.info("=" * 80)
+        
         token_response = requests.post(
             self.auth_endpoint,
             data=auth_request_payload,
@@ -120,8 +143,23 @@ class LightspeedOAuthAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
             token_response.raise_for_status()
             self.logger.info("OAuth authorization attempt was successful.")
         except Exception as ex:
+            # Log error details including the refresh_token that was used
+            error_response = {}
+            try:
+                error_response = token_response.json()
+            except:
+                error_response = {"error": "Could not parse error response", "text": token_response.text[:200]}
+            
+            refresh_token_used = auth_request_payload.get("refresh_token", "N/A")
+            self.logger.error("=" * 80)
+            self.logger.error("TOKEN REFRESH FAILED:")
+            self.logger.error(f"refresh_token used: {refresh_token_used}")
+            self.logger.error(f"Error response: {error_response}")
+            self.logger.error(f"HTTP Status: {token_response.status_code}")
+            self.logger.error("=" * 80)
+            
             raise RuntimeError(
-                f"Failed OAuth login, response was '{token_response.json()}'. {ex}"
+                f"Failed OAuth login, response was '{error_response}'. {ex}"
             )
         token_json = token_response.json()
         self.access_token = token_json["access_token"]
@@ -134,17 +172,17 @@ class LightspeedOAuthAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
             )
         self.last_refreshed = request_time
 
-        # Helper function to mask token for logging (show first 8 and last 4 chars)
-        def mask_token(token: str) -> str:
-            if not token or len(token) <= 12:
-                return "***"
-            return f"{token[:8]}...{token[-4:]}"
-
-        # Log token information for debugging - access token full display
-        self.logger.info(
-            f"Token refreshed successfully. Access token: {token_json['access_token']}, "
-            f"expires in: {self.expires_in} seconds"
-        )
+        # Log new token information - showing full tokens for debugging
+        # This is important for troubleshooting when pods die
+        # Get refresh_token (new from response or existing from config)
+        refresh_token_to_log = token_json.get("refresh_token") or self.config.get("refresh_token", "N/A")
+        
+        self.logger.info("=" * 80)
+        self.logger.info("NEW TOKEN RECEIVED - Full token details:")
+        self.logger.info(f"access_token: {token_json['access_token']}")
+        self.logger.info(f"refresh_token: {refresh_token_to_log}")
+        self.logger.info(f"expires_in: {self.expires_in} seconds")
+        self.logger.info("=" * 80)
 
         # store access_token in config file
         self._tap._config["access_token"] = token_json["access_token"]
@@ -152,8 +190,6 @@ class LightspeedOAuthAuthenticator(OAuthAuthenticator, metaclass=SingletonMeta):
         if "refresh_token" in token_json:
             self._tap._config["refresh_token"] = token_json["refresh_token"]
             refresh_token_updated = True
-            refresh_token_masked = mask_token(token_json["refresh_token"])
-            self.logger.info(f"Refresh token updated: {refresh_token_masked}")
         else:
             self.logger.debug("No refresh_token in response, keeping existing one")
         
