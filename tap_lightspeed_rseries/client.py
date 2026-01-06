@@ -205,12 +205,11 @@ class LightspeedRSeriesStream(RESTStream):
             raise RetriableAPIError(msg)
 
     def _write_state_message(self) -> None:
-        """Write out a STATE message with the latest state."""
+        """Write out a STATE message with the latest state.
+        
+        Note: We don't clear partitions here as the Singer SDK automatically
+        manages state for partitioned streams (streams with contexts).
+        Clearing partitions would prevent proper incremental sync for child streams.
+        """
         tap_state = self.tap_state
-
-        if tap_state and tap_state.get("bookmarks"):
-            for stream_name in tap_state.get("bookmarks").keys():
-                if tap_state["bookmarks"][stream_name].get("partitions"):
-                    tap_state["bookmarks"][stream_name] = {"partitions": []}
-
         singer.write_message(StateMessage(value=tap_state))
