@@ -483,6 +483,8 @@ class ShipmentStream(LightspeedRSeriesStream):
         th.Property("cost", th.StringType),
         th.Property("vendorCost", th.StringType),
         th.Property("status", th.StringType),
+        th.Property("Employee", th.StringType),
+        th.Property("Order", th.StringType),
         th.Property("OrderShipmentItems", th.StringType),
     ).to_dict()
 
@@ -508,12 +510,14 @@ class ShipmentStream(LightspeedRSeriesStream):
             row["accountID"] = context.get("accountID")
             row["account_name"] = context.get("account_name")
         
-        # Convert OrderShipmentItems to JSON string for simplicity
-        if "OrderShipmentItems" in row:
-            if row["OrderShipmentItems"] and row["OrderShipmentItems"] != "":
-                row["OrderShipmentItems"] = json.dumps(row["OrderShipmentItems"])
-            else:
-                row["OrderShipmentItems"] = None
+        # Convert all relation fields to JSON strings for simplicity
+        relation_fields = ["Employee", "Order", "OrderShipmentItems"]
+        for field in relation_fields:
+            if field in row:
+                if row[field] and row[field] != "":
+                    row[field] = json.dumps(row[field])
+                else:
+                    row[field] = None
         
         return row
 
