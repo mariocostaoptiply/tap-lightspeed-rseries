@@ -533,7 +533,7 @@ class ShopStream(LightspeedRSeriesStream):
     parent_stream_type = AccountStream
     path = "/Account/{accountID}/Shop.json"
     primary_keys = ["shopID"]
-    replication_key = "timeStamp"
+    replication_key = None
 
     records_jsonpath = "$.Shop[*]"
 
